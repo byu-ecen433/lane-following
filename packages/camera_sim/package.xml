@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>camera_sim</name>
+  <version>0.0.0</version>
+  <description>ECEN 433 Lab 4 - replays saved images as if they came from the Duckiebot camera</description>
+
+  <maintainer email="ecen433student@gmail.com">ECEN 433 Student</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Add a line here for every ROS package your nodes import from. -->
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+
+  <export>
+  </export>
+</package>

@@ -1,0 +1,10 @@
+# ECEN 433 - Lab 4
+#
+# PROVIDED. How camera_sim replays the sample images.
+#
+# Lower seconds_per_image to cycle through the samples faster while you are
+# tuning thresholds; raise it if a frame goes past before you can look at it.
+
+publish_rate: 20.0        # Hz, roughly what the real camera manages
+seconds_per_image: 5.0    # how long to hold each sample image
+frame_id: "camera_optical_frame"

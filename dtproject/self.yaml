@@ -1,8 +1,8 @@
-name: "<PROJECT_NAME_HERE>"
+name: "lane-following"
 maintainer:
     name: "ECEN 433 Student"
     email: "ecen433student@gmail.com"
-description: "ROS project for Duckietown"
+description: "ECEN 433 Lab 4 - lane detection and image processing"
 version: 0.0.0
 # pick an icon from: https://fontawesome.com/v4.7.0/icons/
 icon: y-combinator

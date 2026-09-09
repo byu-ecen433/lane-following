@@ -1,47 +1,51 @@
-# Template: template-ros
+# ECEN 433 - Lab 4: Lane Detection & Image Processing
 
-This template provides a boilerplate repository
-for developing ROS-based software in Duckietown.
-
-**NOTE:** If you want to develop software that does not use
-ROS, check out [this template](https://github.com/duckietown/template-basic).
-
-
-## How to use it
-
-### 1. Fork this repository
-
-Use the fork button in the top-right corner of the github page to fork this template repository.
+Starter code for Lab 4. You will write one ROS node that finds the white,
+yellow and red lane markings in a camera image and publishes them as line
+segments. The same node runs against saved images on this machine and against
+the live camera on your Duckiebot, where it replaces Duckietown's own line
+detector and feeds their ground projection, lane filter and controller.
 
 
-### 2. Create a new repository
+## Building and running
 
-Create a new repository on github.com while
-specifying the newly forked template repository as
-a template for your new repository.
+```bash
+dts devel build -f
+```
 
+The workspace is installed with symlinks, so **editing** an existing Python node
+or launch file does not need a rebuild - save the file and launch again. Re-run
+the build when you **add** a new file, rename one, or add a package, message
+type, or dependency.
 
-### 3. Define dependencies
+Then, on this machine, against the sample images:
 
-List the dependencies in the files `dependencies-apt.txt` and
-`dependencies-py3.txt` (apt packages and pip packages respectively).
+```bash
+dts devel run -X -L detector_test
+```
 
+- `-X` allows the container to open GUI windows. Without it none of the
+  `rqt_image_view` windows appear.
+- `-L detector_test` runs `launchers/detector_test.sh`.
 
-### 4. Place your code
+On your robot, wired into the Duckietown stack:
 
-Place your code in the directory `/packages/` of
-your new repository.
+```bash
+dts devel build -H <robot> -f
+dts devel run   -H <robot> -L lane_following
+```
 
+No `-X` there - the robot has no screen. Open the debug views from a separate
+`dts gui <robot>` shell with `rqt_image_view`.
 
-### 5. Setup launchers
+To poke around inside the container instead of launching straight away:
 
-The directory `/launchers` can contain as many launchers (launching scripts)
-as you want. A default launcher called `default.sh` must always be present.
+```bash
+dts devel run -X --cmd bash
+```
 
-If you create an executable script (i.e., a file with a valid shebang statement)
-a launcher will be created for it. For example, the script file 
-`/launchers/my-launcher.sh` will be available inside the Docker image as the binary
-`dt-launcher-my-launcher`.
+and to attach a second terminal to a container that is already running:
 
-When launching a new container, you can simply provide `dt-launcher-my-launcher` as
-command.
+```bash
+dts devel run attach
+```
