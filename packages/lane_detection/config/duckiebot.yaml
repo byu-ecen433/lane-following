@@ -78,25 +78,36 @@ top_cutoff: 0.5
 #    are darker and less saturated than Duckietown's published defaults expect,
 #    so a range copied from their config will find almost nothing. Measure.
 #
-#  * Red is unverified against these images - none of the five sample frames
-#    contains a stop line. All you can check here is that red does not pick up
-#    the rubber ducks and the scenery. Tune it properly on your robot, parked
-#    in front of a real stop line.
+#  * Some of the sample frames have a red stop line in them and most do not, so
+#    check both: that red finds the stop line where there is one, and that it
+#    does not pick up the ducks and scenery where there is not. Only a handful
+#    of red segments come out either way - re-tune on your robot in front of a
+#    real stop line.
 # ---------------------------------------------------------------------------
 colors:
   WHITE:
     low:  [0, 0, 0]        # TODO
     high: [180, 255, 255]  # TODO
+    hough:
+      # Continuous line, so bridging a gap joins up one real marking.
+      max_line_gap: 5
 
   YELLOW:
     low:  [0, 0, 0]        # TODO
     high: [180, 255, 255]  # TODO
+    hough:
+      # Dashed. A larger gap welds separate dashes into one long segment that
+      # cuts across the curve - measurably worse votes. Keep this small.
+      max_line_gap: 1
 
   RED:
     low_1:  [0, 0, 0]        # TODO
     high_1: [180, 255, 255]  # TODO
     low_2:  [0, 0, 0]        # TODO
     high_2: [180, 255, 255]  # TODO
+    # No override: the stop line is continuous like the white line, but there
+    # are too few red segments in the samples to measure a difference, so it
+    # stays on the defaults.
 
 # Erode to drop speckle, then dilate PAST the original size so the mask reaches
 # out over the Canny edges sitting on its boundary. Without the dilation the
@@ -113,14 +124,12 @@ canny_aperture_size: 3
 # Be more permissive than feels right. A lane marking at the far end of the
 # frame is only a few pixels long at this resolution, and those distant
 # segments are exactly the ones that tell the robot where the lane is going.
+# Defaults for every colour. Any colour can override any of these in its own
+# block above - see WHITE and YELLOW.
 hough:
   threshold: 4
   min_line_length: 3
   max_line_gap: 3
-
-# Order each segment's endpoints so they record which side the paint is on.
-# Set false to see what Part IV is actually worth.
-orient_segments: true
 
 # How far either side of a segment to sample the mask, in pixels.
 normal_probe_px: 2
