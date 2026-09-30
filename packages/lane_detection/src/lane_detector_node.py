@@ -13,15 +13,11 @@ import numpy as np
 import cv2
 import rospy
 from cv_bridge import CvBridge
-from sensor_msgs.msg import CompressedImage, Image
+from sensor_msgs.msg import Image, CompressedImage
 from std_srvs.srv import SetBool, SetBoolResponse
 from duckietown_msgs.msg import Segment, SegmentList
 
-# Where the real camera publishes, and where camera_sim pretends to. Relative,
-# so the namespace supplies the robot name. Overridden by ~image_topic.
-DEFAULT_IMAGE_TOPIC = "camera_node/image/compressed"
-
-# BGR colours used only for drawing the debug images.
+# BGR colours used for drawing debug images.
 DRAW_COLORS = {
     "WHITE": (255, 255, 255),
     "YELLOW": (0, 255, 255),
@@ -35,9 +31,6 @@ SEGMENT_COLOR_IDS = {
     "YELLOW": Segment.YELLOW,
     "RED": Segment.RED,
 }
-
-DEFAULT_NORMAL_PROBE_PX = 2
-
 
 class ColorRange:
     """One colour's HSV threshold, as one range or multiple ranges.
@@ -85,47 +78,13 @@ class ColorRange:
 class LaneDetectorNode:
     def __init__(self):
         rospy.init_node("lane_detector_node")
-
-        self.image_topic = rospy.get_param("~image_topic", DEFAULT_IMAGE_TOPIC)
-
-        img_size = rospy.get_param("~img_size", [160, 120])
-        self.img_w, self.img_h = int(img_size[0]), int(img_size[1])
-        # A FRACTION of the image height for cropping
-        self.top_cutoff = float(rospy.get_param("~top_cutoff", 0.5))
-        if not 0.0 <= self.top_cutoff < 1.0:
-            raise ValueError(
-                f"~top_cutoff is a fraction of image height and must be in "
-                f"[0.0, 1.0), got {self.top_cutoff}.")
-        self.cutoff_rows = int(self.top_cutoff * self.img_h)
-
-        hough_defaults = rospy.get_param("~hough", {})
-        self.colors = {name: ColorRange(name, cfg, hough_defaults)
-                       for name, cfg in rospy.get_param("~colors").items()}
-
-        kernel_size = int(rospy.get_param("~dilation_kernel_size", 3))
-        self.kernel = cv2.getStructuringElement(
-            cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-        self.erode_iterations = int(rospy.get_param("~erode_iterations", 1))
-        self.dilate_iterations = int(rospy.get_param("~dilate_iterations", 1))
-
-        self.canny_thresholds = rospy.get_param("~canny_thresholds", [80, 200])
-        self.canny_aperture_size = int(rospy.get_param("~canny_aperture_size", 3))
-
-        self.normal_probe_px = int(
-            rospy.get_param("~normal_probe_px", DEFAULT_NORMAL_PROBE_PX))
-
-        # Precomputed for the normalisation step. arr_cutoff puts the rows the
-        # crop removed back onto y; arr_ratio divides by the FULL resized size.
-        self.arr_cutoff = np.array([0, self.cutoff_rows, 0, self.cutoff_rows])
-        self.arr_ratio = np.array([1.0 / self.img_w, 1.0 / self.img_h,
-                                   1.0 / self.img_w, 1.0 / self.img_h])
-
+        self.get_params(event=None)
         self.bridge = CvBridge()
 
-        # ~segment_list is the real output; the rest are debug views, rendered
-        # only when something is subscribed.
-        self.pub_segments = rospy.Publisher("~segment_list", SegmentList, queue_size=1)
+        # TODO: segment publisher
+        self.pub_segments = None
 
+        # Debug views, rendered only when something is subscribed.
         self.pub_cropped = rospy.Publisher("~image_cropped", Image, queue_size=1)
         self.pub_edges = rospy.Publisher("~image_edges", Image, queue_size=1)
         self.pub_masks = {
@@ -138,14 +97,11 @@ class LaneDetectorNode:
         }
         self.pub_lines_all = rospy.Publisher("~image_lines_all", Image, queue_size=1)
 
-        # buff_size has to be large or ROS buffers up stale frames and the node
-        # falls further and further behind the camera.
-        self.sub_image = rospy.Subscriber(
-            self.image_topic, CompressedImage, self.image_cb,
-            queue_size=1, buff_size=2 ** 24)
+        # TODO: subscribe to image
+        self.sub_image = None
 
         # We replaced Duckietown's line detector, so we answer its switch
-        # service in its place. The real lane_filter_node offers its own.
+        # service in its place.
         rospy.Service("~switch", SetBool, self._switch)
         if rospy.get_param("~fake_lane_filter_switch", False):
             rospy.Service("lane_filter_node/switch", SetBool, self._switch)
@@ -154,9 +110,32 @@ class LaneDetectorNode:
                       rospy.resolve_name(self.image_topic),
                       ", ".join(sorted(self.colors)))
 
-    def _switch(self, req):
-        """Answer the FSM's switch service. We are always on."""
-        return SetBoolResponse(True, "")
+    def get_params(self, event):
+
+        self.image_topic = rospy.get_param("~image_topic", "camera_node/image/compressed")
+        img_size = rospy.get_param("~img_size", [160, 120])
+        self.top_cutoff = float(rospy.get_param("~top_cutoff", 0.5))
+        hough_defaults = rospy.get_param("~hough", {})
+        self.colors = {name: ColorRange(name, cfg, hough_defaults)
+                        for name, cfg in rospy.get_param("~colors").items()}
+        kernel_size = int(rospy.get_param("~dilation_kernel_size", 3))
+        self.erode_iterations = int(rospy.get_param("~erode_iterations", 1))
+        self.dilate_iterations = int(rospy.get_param("~dilate_iterations", 1))
+        self.canny_thresholds = rospy.get_param("~canny_thresholds", [80, 200])
+        self.canny_aperture_size = int(rospy.get_param("~canny_aperture_size", 3))
+        self.normal_probe_px = int(rospy.get_param("~normal_probe_px", 2))
+
+
+        # Computed variables from parameters.
+        self.img_w, self.img_h = int(img_size[0]), int(img_size[1])
+        if not 0.0 <= self.top_cutoff < 1.0:
+            raise ValueError(
+                f"~top_cutoff is a fraction of image height and must be in "
+                f"[0.0, 1.0), got {self.top_cutoff}.")
+        self.cutoff_rows = int(self.top_cutoff * self.img_h)
+        self.kernel = cv2.getStructuringElement(
+                    cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+    
 
     # ----------------------------------------------------------------------
     # Parts II and III
@@ -171,8 +150,7 @@ class LaneDetectorNode:
             return
 
         # TODO (Part II): resize to (self.img_w, self.img_h), THEN slice off
-        # the top self.cutoff_rows rows. That order matters - the normalisation
-        # in _publish_segments assumes it. Notebook section 1.
+        # the top self.cutoff_rows rows. That order matters!
         cropped = None
 
         # TODO (Part II): BGR to HSV. Notebook section 2.
@@ -210,9 +188,32 @@ class LaneDetectorNode:
         self._publish_segments(msg.header, detections)
         self._publish_debug(msg.header, cropped, edges, masks, detections)
 
+    def _publish_segments(self, header, detections):
+        """Normalise every segment and publish them as one SegmentList.
+
+        Called every frame, even with no detections - an empty list is still
+        a message ground projection should receive.
+        """
+        # TODO (Part III): build one SegmentList and publish it on self.pub_segments.
+        #
+        # * Copy only header.stamp onto the list, not the whole header.
+        # * detections maps colour name -> (lines, normals): lines is Nx4
+        #   (x1, y1, x2, y2) in CROPPED-image pixels, normals is Nx2.
+        # * One Segment per line. `rosmsg show duckietown_msgs/Segment` lists
+        #   its fields; SEGMENT_COLOR_IDS gives the colour id for each name.
+        # * Segment coordinates are fractions of the image, not pixels. Ground
+        #   projection applies the Lab 1 camera calibration, which describes
+        #   the WHOLE frame, so undo the crop (self.cutoff_rows) before dividing
+        #   by the resized size (self.img_w, self.img_h). Which height you
+        #   divide by matters, and getting it wrong does not raise an error.
+        pass
+
     # ----------------------------------------------------------------------
     # Provided from here down. Read it, but you should not need to edit it.
     # ----------------------------------------------------------------------
+    def _switch(self, req):
+        """Answer the FSM's switch service. We are always on."""
+        return SetBoolResponse(True, "")
 
     def _orient(self, lines, mask):
         """Give every segment a direction, so its endpoint order means something.
@@ -261,11 +262,6 @@ class LaneDetectorNode:
 
         return normals
 
-
-    # ----------------------------------------------------------------------
-    # Provided from here down. Read it, but you should not need to change it.
-    # ----------------------------------------------------------------------
-    
     @staticmethod
     def _clamp(values, bound):
         """Round to int pixel indices and keep them inside [0, bound)."""
@@ -273,41 +269,11 @@ class LaneDetectorNode:
         np.clip(out, 0, bound - 1, out=out)
         return out
 
-    def _publish_segments(self, header, detections):
-        """Normalise every segment and publish them as one SegmentList.
-
-        Coordinates go out as fractions of the image: add the cropped rows back,
-        then divide by the full resized size. Ground projection turns those into
-        metres using the camera calibration from Lab 1.
-        """
-        seg_list = SegmentList()
-        seg_list.header.stamp = header.stamp
-
-        for name, (lines, normals) in detections.items():
-            if len(lines) == 0:
-                continue
-            color_id = SEGMENT_COLOR_IDS[name]
-            normalized = (lines + self.arr_cutoff) * self.arr_ratio
-
-            for (x1, y1, x2, y2), normal in zip(normalized, normals):
-                seg = Segment()
-                seg.color = color_id
-                seg.pixels_normalized[0].x = x1
-                seg.pixels_normalized[0].y = y1
-                seg.pixels_normalized[1].x = x2
-                seg.pixels_normalized[1].y = y2
-                seg.normal.x = normal[0]
-                seg.normal.y = normal[1]
-                seg_list.segments.append(seg)
-
-        self.pub_segments.publish(seg_list)
-
     @staticmethod
     def _has_subscribers(publisher):
         return publisher.get_num_connections() > 0
 
     def _publish_debug(self, header, cropped, edges, masks, detections):
-        # Nothing to draw until the pipeline above produces something.
         if cropped is None:
             return
 
