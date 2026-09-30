@@ -2,10 +2,6 @@
 #
 # Detector configuration for the ROBOT.
 #
-# Named `duckiebot` because that is the fallback in
-#
-#     <arg name="ns" value="$(optenv VEHICLE_NAME duckiebot)" unless="$(arg test)"/>
-#
 # COPY THIS FILE AND NAME THE COPY AFTER YOUR ROBOT - config/<VEHICLE_NAME>.yaml.
 # That is the Duckietown convention and it is the filename the launch file
 # actually looks for once VEHICLE_NAME is set. `echo $VEHICLE_NAME` inside the

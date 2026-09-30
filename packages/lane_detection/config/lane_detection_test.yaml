@@ -1,9 +1,7 @@
 # ECEN 433 - Lab 4
 #
 # Detector configuration for TEST mode - the saved images replayed by
-# camera_sim. Loaded by lane_detection.launch when test:=true, because the
-# launch file loads config/$(arg ns).yaml and the test namespace is
-# `lane_detection_test`.
+# camera_sim. Loaded by lane_detection.launch when test:=true.
 #
 # Your robot gets its own copy of this file, named after it. The two files have
 # the same keys and different numbers, which is the whole point: the node never
