@@ -1,0 +1,63 @@
+<launch>
+
+  <!--
+    ECEN 433 - Lab 4, the detector wired into the Duckietown stack.
+
+    ROBOT ONLY. This starts Duckietown's own lane-following stack with OUR line
+    detector substituted for theirs, so that the segments this node publishes
+    are the ones the rest of the pipeline consumes:
+
+        camera_node -> line_detector_node (ours) -> ground_projection_node
+                                                 -> lane_filter_node -> lane_pose
+
+    Build and run it on the bot, not on your laptop:
+
+        dts devel build -H <robot> -f
+        dts devel run   -H <robot> -L lane_following
+
+  -->
+
+  <arg name="veh" default="$(env VEHICLE_NAME)"/>
+
+  <include file="$(find led_emitter)/launch/led_emitter_node.launch">
+    <arg name="veh" value="$(arg veh)"/>
+  </include>
+
+  <include file="$(find duckietown_demos)/launch/master.launch">
+
+    <arg name="veh" value="$(arg veh)"/>
+    <arg name="demo_name" value="lane_following"/>
+    <arg name="param_file_name" value="default"/>
+    <arg name="visualization" value="true"/>
+
+    <!-- Camera -->
+    <arg name="/camera/raw" value="false"/>
+    <arg name="anti_instagram" value="true"/>
+
+    <!-- Lane following stack. line_detection:=false is important it stops Duckietown's own
+         detector from starting -->
+    <arg name="lane_following" value="true"/>
+    <arg name="/lane_following/line_detection" value="false"/>
+    <arg name="line_detector_param_file_name" value="default"/>
+    <arg name="/lane_following/ground_projection" value="true"/>
+    <arg name="/lane_following/lane_filter" value="true"/>
+    <arg name="fsm" value="true"/>
+    <arg name="/fsm/logic_gate" value="false"/>
+
+    <!-- Lab 5 replaces this with your own controller. For Lab 4 leave
+         Duckietown's on: it is what makes the bot actually drive, so you can
+         see your detector working at speed. -->
+    <arg name="/lane_following/lane_controller" value="true"/>
+
+    <arg name="/lane_following/stop_line_filter" value="true"/>
+
+  </include>
+
+  <group ns="$(arg veh)">
+    <node pkg="lane_detection" type="lane_detector_node.py" name="line_detector_node"
+          output="screen">
+      <rosparam file="$(find lane_detection)/config/$(arg veh).yaml" subst_value="true"/>
+    </node>
+  </group>
+
+</launch>
