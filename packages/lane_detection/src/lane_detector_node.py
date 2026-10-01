@@ -6,7 +6,6 @@ ECEN 433 - Lab 4
 Find the white, yellow and red lane markings in a camera image and publish them
 as line segments for the rest of the Duckietown stack to use.
 
-Debug and tune your parameters in the notebook: lane_detection_activity.ipynb.
 """
 
 import numpy as np
@@ -71,7 +70,7 @@ class ColorRange:
     def mask(self, hsv):
         """The binary mask of every pixel of this colour."""
         # TODO (Part II): cv2.inRange for each (low, high) in self.bounds,
-        # combined with cv2.bitwise_or. Notebook section 3.
+        # combined with cv2.bitwise_or.
         raise NotImplementedError("ColorRange.mask")
 
 
@@ -153,17 +152,16 @@ class LaneDetectorNode:
         # the top self.cutoff_rows rows. That order matters!
         cropped = None
 
-        # TODO (Part II): BGR to HSV. Notebook section 2.
+        # TODO (Part II): BGR to HSV.
         hsv = None
 
         # TODO (Part II): a cleaned mask per colour. self.colors maps name ->
         # ColorRange; erode then dilate with self.kernel and the iteration
         # counts from the param file. The dilation is what makes the mask reach
-        # the Canny edges on its boundary. Notebook sections 3 and 4.
+        # the Canny edges on its boundary.
         masks = {}
 
-        # TODO (Part III): Canny once over `cropped`, not once per colour.
-        # Notebook section 5.
+        # TODO (Part III): Find edges once, not once per colour.
         edges = None
 
         detections = {}
@@ -172,8 +170,7 @@ class LaneDetectorNode:
             # cv2.HoughLinesP on the result, using THIS colour's parameters -
             # self.colors[name].hough_threshold, .hough_min_line_length and
             # .hough_max_line_gap. minLineLength and maxLineGap must both be
-            # > 0. Handle a None return, and reshape to (-1, 4) - OpenCV 4
-            # returns Nx1x4. Notebook sections 6 and 7.
+            # > 0. Handle a None return, and reshape to (-1, 4)
             lines = np.zeros((0, 4), dtype=int)
 
             normals = self._orient(lines, mask)
@@ -182,8 +179,7 @@ class LaneDetectorNode:
         if cropped is None:
             rospy.logwarn_once(
                 "image_cb is not doing anything yet - frames are arriving but "
-                "the TODOs above are unfilled, so there is nothing to publish. "
-                "Work through notebooks/lane_detection_activity.ipynb first.")
+                "the TODOs above are unfilled, so there is nothing to publish. ")
 
         self._publish_segments(msg.header, detections)
         self._publish_debug(msg.header, cropped, edges, masks, detections)
