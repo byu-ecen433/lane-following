@@ -9,4 +9,5 @@
 LICENSE.pdf  !filter !diff !merge binary
 docs/src/logo.png  !filter !diff !merge binary
 notebooks/data/*.jpg  !filter !diff !merge binary
+notebooks/*.png  !filter !diff !merge binary
 packages/camera_sim/sample_images/*.jpg  !filter !diff !merge binary

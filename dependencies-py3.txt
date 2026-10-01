@@ -1,3 +1,4 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
+# <5: cv_bridge is compiled against OpenCV 4 and cannot publish colour images with a cv2 5.x
 opencv-python<5
-opencv-python-headless
+opencv-python-headless<5

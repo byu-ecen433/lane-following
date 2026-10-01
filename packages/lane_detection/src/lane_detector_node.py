@@ -172,8 +172,8 @@ class LaneDetectorNode:
             # cv2.HoughLinesP on the result, using THIS colour's parameters -
             # self.colors[name].hough_threshold, .hough_min_line_length and
             # .hough_max_line_gap. minLineLength and maxLineGap must both be
-            # > 0. Handle a None return, and reshape to (-1, 4) - this OpenCV
-            # returns Nx4. Notebook sections 6 and 7.
+            # > 0. Handle a None return, and reshape to (-1, 4) - OpenCV 4
+            # returns Nx1x4. Notebook sections 6 and 7.
             lines = np.zeros((0, 4), dtype=int)
 
             normals = self._orient(lines, mask)
