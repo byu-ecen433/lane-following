@@ -18,7 +18,6 @@ import rospy
 import rospkg
 from sensor_msgs.msg import CompressedImage
 
-# Where the real camera publishes. Relative on purpose - see the note above.
 IMAGE_TOPIC = "camera_node/image/compressed"
 
 PUBLISH_RATE_HZ = 20.0      # roughly what the real camera manages

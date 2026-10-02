@@ -16,7 +16,7 @@ from sensor_msgs.msg import Image, CompressedImage
 from std_srvs.srv import SetBool, SetBoolResponse
 from duckietown_msgs.msg import Segment, SegmentList
 
-# BGR colours used for drawing debug images.
+# BGR colors used for drawing debug images.
 DRAW_COLORS = {
     "WHITE": (255, 255, 255),
     "YELLOW": (0, 255, 255),
@@ -32,11 +32,11 @@ SEGMENT_COLOR_IDS = {
 }
 
 class ColorRange:
-    """One colour's HSV threshold, as one range or multiple ranges.
+    """One color's HSV threshold, as one range or multiple ranges.
 
     Red can require two. Hue is an angle: OpenCV packs it into 0..179, so red sits at
     both ends of that scale at once and no single low/high pair can catch it.
-    Every other colour on the road is one contiguous band and needs one range.
+    Every other color on the road is one contiguous band and needs one range.
 
     The parsing below is done for you. It reads whichever shape your param file
     uses - a single `low`/`high` pair, or numbered `low_1`/`high_1`,
@@ -44,16 +44,16 @@ class ColorRange:
     `self.bounds`.
     """
 
-    def __init__(self, name, config, hough_defaults=None):
+    def __init__(self, name, config, hough_defaults):
         self.name = name
 
-        # Hough parameters default for every colour, and each colour may
-        # override any of them. 
-        h = dict(hough_defaults or {})
+        # The `hough` block applies to every color, and each color may
+        # override any of it.
+        h = dict(hough_defaults)
         h.update(config.get("hough", {}))
-        self.hough_threshold = int(h.get("threshold", 4))
-        self.hough_min_line_length = int(h.get("min_line_length", 3))
-        self.hough_max_line_gap = int(h.get("max_line_gap", 3))
+        self.hough_threshold = int(h["threshold"])
+        self.hough_min_line_length = int(h["min_line_length"])
+        self.hough_max_line_gap = int(h["max_line_gap"])
 
         self.bounds = []
         if "low" in config:
@@ -65,10 +65,10 @@ class ColorRange:
                                 np.array(config[f"high_{i}"], dtype=np.uint8)))
             i += 1
         if not self.bounds:
-            raise ValueError(f"colour {name} has no low/high or low_1/high_1 pair")
+            raise ValueError(f"color {name} has no low/high or low_1/high_1 pair")
 
     def mask(self, hsv):
-        """The binary mask of every pixel of this colour."""
+        """The binary mask of every pixel of this color."""
         # TODO (Part II): cv2.inRange for each (low, high) in self.bounds,
         # combined with cv2.bitwise_or.
         raise NotImplementedError("ColorRange.mask")
@@ -80,7 +80,7 @@ class LaneDetectorNode:
         self.get_params(event=None)
         self.bridge = CvBridge()
 
-        # TODO: segment publisher
+        # TODO (Part II): segment publisher
         self.pub_segments = None
 
         # Debug views, rendered only when something is subscribed.
@@ -96,8 +96,10 @@ class LaneDetectorNode:
         }
         self.pub_lines_all = rospy.Publisher("~image_lines_all", Image, queue_size=1)
 
-        # TODO: subscribe to image
+        # TODO (Part II): image subscriber
         self.sub_image = None
+
+        # TODO (Part II): a rospy.Timer that re-runs get_params every 10 s
 
         # We replaced Duckietown's line detector, so we answer its switch
         # service in its place.
@@ -110,20 +112,18 @@ class LaneDetectorNode:
                       ", ".join(sorted(self.colors)))
 
     def get_params(self, event):
-
         self.image_topic = rospy.get_param("~image_topic", "camera_node/image/compressed")
-        img_size = rospy.get_param("~img_size", [160, 120])
-        self.top_cutoff = float(rospy.get_param("~top_cutoff", 0.5))
-        hough_defaults = rospy.get_param("~hough", {})
+        img_size = rospy.get_param("~img_size")
+        self.top_cutoff = float(rospy.get_param("~top_cutoff"))
+        hough_defaults = rospy.get_param("~hough")
         self.colors = {name: ColorRange(name, cfg, hough_defaults)
                         for name, cfg in rospy.get_param("~colors").items()}
-        kernel_size = int(rospy.get_param("~dilation_kernel_size", 3))
-        self.erode_iterations = int(rospy.get_param("~erode_iterations", 1))
-        self.dilate_iterations = int(rospy.get_param("~dilate_iterations", 1))
-        self.canny_thresholds = rospy.get_param("~canny_thresholds", [80, 200])
+        kernel_size = int(rospy.get_param("~dilation_kernel_size"))
+        self.erode_iterations = int(rospy.get_param("~erode_iterations"))
+        self.dilate_iterations = int(rospy.get_param("~dilate_iterations"))
+        self.canny_thresholds = rospy.get_param("~canny_thresholds")
         self.canny_aperture_size = int(rospy.get_param("~canny_aperture_size", 3))
         self.normal_probe_px = int(rospy.get_param("~normal_probe_px", 2))
-
 
         # Computed variables from parameters.
         self.img_w, self.img_h = int(img_size[0]), int(img_size[1])
@@ -134,7 +134,6 @@ class LaneDetectorNode:
         self.cutoff_rows = int(self.top_cutoff * self.img_h)
         self.kernel = cv2.getStructuringElement(
                     cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-    
 
     # ----------------------------------------------------------------------
     # Parts II and III
@@ -155,22 +154,21 @@ class LaneDetectorNode:
         # TODO (Part II): BGR to HSV.
         hsv = None
 
-        # TODO (Part II): a cleaned mask per colour. self.colors maps name ->
+        # TODO (Part II): a cleaned mask per color. self.colors maps name ->
         # ColorRange; erode then dilate with self.kernel and the iteration
         # counts from the param file. The dilation is what makes the mask reach
         # the Canny edges on its boundary.
         masks = {}
 
-        # TODO (Part III): Find edges once, not once per colour.
+        # TODO (Part III): Find edges once, not once per color.
         edges = None
 
         detections = {}
         for name, mask in masks.items():
             # TODO (Part III): cv2.bitwise_and the mask with the edges, then
-            # cv2.HoughLinesP on the result, using THIS colour's parameters -
+            # cv2.HoughLinesP on the result, using THIS color's parameters -
             # self.colors[name].hough_threshold, .hough_min_line_length and
-            # .hough_max_line_gap. minLineLength and maxLineGap must both be
-            # > 0. Handle a None return, and reshape to (-1, 4)
+            # .hough_max_line_gap. Handle a None return, and reshape to (-1, 4).
             lines = np.zeros((0, 4), dtype=int)
 
             normals = self._orient(lines, mask)
@@ -179,13 +177,13 @@ class LaneDetectorNode:
         if cropped is None:
             rospy.logwarn_once(
                 "image_cb is not doing anything yet - frames are arriving but "
-                "the TODOs above are unfilled, so there is nothing to publish. ")
+                "the TODOs above are unfilled, so there is nothing to publish.")
 
         self._publish_segments(msg.header, detections)
         self._publish_debug(msg.header, cropped, edges, masks, detections)
 
     def _publish_segments(self, header, detections):
-        """Normalise every segment and publish them as one SegmentList.
+        """Normalize every segment and publish them as one SegmentList.
 
         Called every frame, even with no detections - an empty list is still
         a message ground projection should receive.
@@ -193,10 +191,10 @@ class LaneDetectorNode:
         # TODO (Part III): build one SegmentList and publish it on self.pub_segments.
         #
         # * Copy only header.stamp onto the list, not the whole header.
-        # * detections maps colour name -> (lines, normals): lines is Nx4
+        # * detections maps color name -> (lines, normals): lines is Nx4
         #   (x1, y1, x2, y2) in CROPPED-image pixels, normals is Nx2.
         # * One Segment per line. `rosmsg show duckietown_msgs/Segment` lists
-        #   its fields; SEGMENT_COLOR_IDS gives the colour id for each name.
+        #   its fields; SEGMENT_COLOR_IDS gives the color id for each name.
         # * Segment coordinates are fractions of the image, not pixels. Ground
         #   projection applies the Lab 1 camera calibration, which describes
         #   the WHOLE frame, so undo the crop (self.cutoff_rows) before dividing
@@ -303,10 +301,10 @@ class LaneDetectorNode:
         """Draw each segment, plus a stub showing which way its normal points.
 
         The stub is the useful part: it should always point away from the paint,
-        on the same side for every segment of a given marking. If they disagree
-        with each other, your orientation step is not working. The magenta dot
-        is the segment's FIRST endpoint - which one it is is the whole subject
-        of Part IV.
+        on the same side for every segment of a given marking. Where they
+        disagree, the probes could not tell which side the paint is on - look
+        at that color's mask. The magenta dot is the segment's FIRST endpoint -
+        which one it is is the whole subject of Part IV.
         """
         out = np.copy(image)
         for (x1, y1, x2, y2), normal in zip(lines, normals):

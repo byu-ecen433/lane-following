@@ -12,8 +12,8 @@
 
     Build and run it on the bot, not on your laptop:
 
-        dts devel build -H <robot> -f
-        dts devel run   -H <robot> -L lane_following
+        dts devel build -H DUCKIEBOT_NAME -f
+        dts devel run   -H DUCKIEBOT_NAME -L lane_following
 
   -->
 
@@ -34,7 +34,7 @@
     <arg name="/camera/raw" value="false"/>
     <arg name="anti_instagram" value="true"/>
 
-    <!-- Lane following stack. line_detection:=false is important it stops Duckietown's own
+    <!-- Lane following stack. line_detection:=false is important: it stops Duckietown's own
          detector from starting -->
     <arg name="lane_following" value="true"/>
     <arg name="/lane_following/line_detection" value="false"/>

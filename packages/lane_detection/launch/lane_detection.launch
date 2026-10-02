@@ -11,13 +11,13 @@
   <arg name="ns" value="lane_detection_test" if="$(arg test)"/>
   <arg name="ns" value="$(optenv VEHICLE_NAME duckiebot)" unless="$(arg test)"/>
 
-  <!-- Open a viewer per debug topic. Off by default -->
+  <!-- Open a viewer per debug topic. On by default in test mode. -->
   <arg name="view" default="$(arg test)"/>
 
   <group ns="$(arg ns)">
 
     <!--
-      The simulated camera feed. 
+      The simulated camera feed.
     -->
     <node pkg="camera_sim" type="camera_sim_node.py" name="camera_node"
           output="screen" if="$(arg test)">

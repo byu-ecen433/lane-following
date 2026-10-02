@@ -31,12 +31,12 @@ dts devel run -X -L detector_test
 On your robot, wired into the Duckietown stack:
 
 ```bash
-dts devel build -H <robot> -f
-dts devel run   -H <robot> -L lane_following
+dts devel build -H DUCKIEBOT_NAME -f
+dts devel run   -H DUCKIEBOT_NAME -L lane_following
 ```
 
 No `-X` there - the robot has no screen. Open the debug views from a separate
-`dts gui <robot>` shell with `rqt_image_view`.
+`dts gui DUCKIEBOT_NAME` shell with `rqt_image_view`.
 
 To poke around inside the container instead of launching straight away:
 

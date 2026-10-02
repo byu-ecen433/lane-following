@@ -2,140 +2,43 @@
 #
 # Detector configuration for the ROBOT.
 #
-# COPY THIS FILE AND NAME THE COPY AFTER YOUR ROBOT - config/<VEHICLE_NAME>.yaml.
-# That is the Duckietown convention and it is the filename the launch file
-# actually looks for once VEHICLE_NAME is set. `echo $VEHICLE_NAME` inside the
-# container if you are not sure. If roslaunch cannot find your param file, this
-# is almost always why.
+# COPY THIS FILE AND NAME THE COPY AFTER YOUR ROBOT - config/DUCKIEBOT_NAME.yaml.
+# If roslaunch cannot find your param file, this is almost always why.
 #
-# Same keys as config/lane_detection_test.yaml, different numbers. The node is
-# identical in both modes; only this file changes. Do not edit the Python to
-# get onto the robot - if you find yourself doing that, something is wrong.
-#
-# ---------------------------------------------------------------------------
-# YOUR SAMPLE-IMAGE THRESHOLDS WILL NOT SIMPLY WORK HERE.
-#
-# Different camera, different exposure, different light on the day. Two things
-# to know before you start:
-#
-#  * Point the live inspector at your own camera and read HSV off the actual
-#    pixels rather than guessing. See "Inspecting HSV Values" on the course
-#    site.
-#
-#  * anti_instagram is running in lane_following.launch, and this node ignores
-#    it. It publishes a colour correction that Duckietown's own detector
-#    applies and we do not, which is one reason a threshold that worked
-#    yesterday morning can miss this afternoon.
-# ---------------------------------------------------------------------------
+# YOUR SAMPLE-IMAGE THRESHOLDS MAY NOT WORK HERE.
 
 image_topic: "camera_node/image/compressed"
 
-# Resize the frame to img_size, THEN cut the top off. Shrinking is what makes
-# the pipeline fast enough for the robot; the crop drops the part of the frame
-# looking at the horizon rather than the road.
-#
-# top_cutoff is a FRACTION of the image height, not a row count, so it means the
-# same thing whatever you set img_size to - and it is the same number you tuned
-# in section 1 of the notebook. 0.5 throws away the top half.
-#
-# Note this differs from Duckietown's own line detector, which uses a row count
-# here. Copying their `top_cutoff: 40` into this file is an error, and the node
-# will say so rather than silently cropping nothing.
-img_size: [160, 120]
-top_cutoff: 0.5
+img_size: [640, 480]  # TODO
+top_cutoff: 0.0       # TODO
 
-# ---------------------------------------------------------------------------
-# TODO (Part II): the colour thresholds. This is the heart of the lab.
-#
-# Do NOT guess these. Work them out in notebook sections 2 and 3, where you can
-# see the mask update immediately, then bring the numbers here. Guessing and
-# rebuilding the container each time will take you all afternoon.
-#
-# The shape each colour takes:
-#
-#   WHITE:                     one range
-#     low:  [H, S, V]
-#     high: [H, S, V]
-#
-#   RED:                       two ranges, because red straddles H=0
-#     low_1:  [H, S, V]
-#     high_1: [H, S, V]
-#     low_2:  [H, S, V]
-#     high_2: [H, S, V]
-#
-# Hints, in the order you will need them:
-#
-#  * White is BRIGHT and UNSATURATED. The saturation ceiling is the important
-#    one - it is what stops the yellow centre line ending up in your white
-#    mask, because yellow is bright too. Hue can be left wide open; an
-#    unsaturated pixel has no meaningful hue.
-#
-#  * Yellow is a hue band, saturated, reasonably bright. These sample images
-#    are darker and less saturated than Duckietown's published defaults expect,
-#    so a range copied from their config will find almost nothing. Measure.
-#
-#  * Some of the sample frames have a red stop line in them and most do not, so
-#    check both: that red finds the stop line where there is one, and that it
-#    does not pick up the ducks and scenery where there is not. Only a handful
-#    of red segments come out either way - re-tune on your robot in front of a
-#    real stop line.
-# ---------------------------------------------------------------------------
 colors:
   WHITE:
     low:  [0, 0, 0]        # TODO
     high: [180, 255, 255]  # TODO
-    hough:
-      # Continuous line, so bridging a gap joins up one real marking.
-      max_line_gap: 5
 
   YELLOW:
     low:  [0, 0, 0]        # TODO
     high: [180, 255, 255]  # TODO
-    hough:
-      # Dashed. A larger gap welds separate dashes into one long segment that
-      # cuts across the curve - measurably worse votes. Keep this small.
-      max_line_gap: 1
 
   RED:
     low_1:  [0, 0, 0]        # TODO
     high_1: [180, 255, 255]  # TODO
     low_2:  [0, 0, 0]        # TODO
     high_2: [180, 255, 255]  # TODO
-    # No override: the stop line is continuous like the white line, but there
-    # are too few red segments in the samples to measure a difference, so it
-    # stays on the defaults.
 
-# Erode to drop speckle, then dilate PAST the original size so the mask reaches
-# out over the Canny edges sitting on its boundary. Without the dilation the
-# bitwise_and finds almost nothing - notebook section 4.
-dilation_kernel_size: 3
-erode_iterations: 1
-dilate_iterations: 2
+dilation_kernel_size: 1  # TODO
+erode_iterations: 0      # TODO
+dilate_iterations: 0     # TODO
 
-# Working starting points. You are expected to come back and tune these once
-# your masks are right - notebook sections 5 and 7 show what each one does.
-canny_thresholds: [150, 570]
+canny_thresholds: [0, 255]  # TODO
 canny_aperture_size: 3
-
-# Be more permissive than feels right. A lane marking at the far end of the
-# frame is only a few pixels long at this resolution, and those distant
-# segments are exactly the ones that tell the robot where the lane is going.
-# Defaults for every colour. Any colour can override any of these in its own
-# block above - see WHITE and YELLOW.
 hough:
-  threshold: 4
-  min_line_length: 3
-  max_line_gap: 3
+  threshold: 1        # TODO
+  min_line_length: 1  # TODO
+  max_line_gap: 1     # TODO
 
-# How far either side of a segment to sample the mask, in pixels.
 normal_probe_px: 2
 
-# Duckietown's state machine calls a `switch` service on every node it manages.
-# We always answer for the line detector, because we replaced theirs. The lane
-# filter is different: lane_following.launch starts the REAL lane_filter_node,
-# which offers its own switch, so ours must stay out of the way or the two
-# collide.
-#
-# Set this true only if you run a partial stack that leaves lane_filter_node
-# out - otherwise the FSM waits forever for a service nobody offers.
+# Leave this false.
 fake_lane_filter_switch: false
